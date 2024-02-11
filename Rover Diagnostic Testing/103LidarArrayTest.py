@@ -7,7 +7,12 @@ def main():
     signal.signal(signal.SIGINT, signal.default_int_handler)  # Allows for KeyboardInterrupt to work.
 
     try:
-        # Fetch and print the LiDAR data once.
+        # Wait for LiDAR data to become available
+        while not rover.laser_distances:
+            print("Waiting for LiDAR data...")
+            sleep(1)  # Wait a bit before checking again
+
+        # Once data is available, fetch and print the LiDAR data.
         lidar_data = rover.laser_distances
         num_beams = len(lidar_data)  # Determine the number of beams in the LiDAR array.
         print("Number of beams in the LiDAR array: {}".format(num_beams))
