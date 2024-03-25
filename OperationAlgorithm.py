@@ -103,16 +103,18 @@ def traverse_adjusted_for_memory(rover, target_x, target_y):
 
 def fields(rover):
     """
-    Calculates a potential field for navigation based on the goal position and detected obstacles.
+    Calculates a potential field for navigation based on the goal position, rover's heading,
+    and detected obstacles, with a preference for keeping obstacles to the side.
     """
-    # Filter out distances beyond a threshold and calculate obstacle positions
     lidar_filtered = [dist if dist < 15 else 0 for dist in rover.laser_distances]
     obstacles_x = [dist * math.sin(angle * math.pi / 180) for angle, dist in enumerate(lidar_filtered) if dist != 0]
     obstacles_y = [dist * math.cos(angle * math.pi / 180) for angle, dist in enumerate(lidar_filtered) if dist != 0]
 
-    # Calculate the resultant potential field vectors for navigation
-    field_total_x = x_goal + sum(k / (x**2 + y**2) * math.cos(math.atan2(y, x)) for x, y in zip(obstacles_x, obstacles_y))
-    field_total_y = y_goal + sum(k / (x**2 + y**2) * math.sin(math.atan2(y, x)) for x, y in zip(obstacles_x, obstacles_y))
+    # Adjust the potential field calculation
+    goal_attraction_x = x_goal - rover.x
+    goal_attraction_y = y_goal - rover.y
+    field_total_x = goal_attraction_x + sum(k / (x**2 + y**2) * math.cos(math.atan2(y, x) - rover.heading * math.pi / 180) for x, y in zip(obstacles_x, obstacles_y))
+    field_total_y = goal_attraction_y + sum(k / (x**2 + y**2) * math.sin(math.atan2(y, x) - rover.heading * math.pi / 180) for x, y in zip(obstacles_x, obstacles_y))
 
     return field_total_x, field_total_y
 
