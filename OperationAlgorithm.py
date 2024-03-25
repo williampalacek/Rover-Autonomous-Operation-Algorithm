@@ -7,10 +7,10 @@ from qset_lib import Rover
 turn_gain = 0.5  # Gain for turning speed adjustment
 forward_gain = 0.1  # Gain for forward speed adjustment
 angular_linear_weight = 8  # Weight for balancing angular and linear movements
-min_fwd_vel = 0.4  # Minimum forward velocity
+min_fwd_vel = 1.3  # Minimum forward velocity
 max_fwd_vel = 2.0  # Maximum forward velocity
-x_goal = 30  # X-coordinate of the goal
-y_goal = 15  # Y-coordinate of the goal
+x_goal = 10  # X-coordinate of the goal
+y_goal = 10  # Y-coordinate of the goal
 k = 185  # Constant for potential field calculation
 sqr_error = 0.5  # Square of the acceptable error margin to the goal
 critical_distance = 1  # Minimum distance to obstacle before taking avoidance action
