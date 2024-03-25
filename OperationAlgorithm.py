@@ -97,7 +97,7 @@ def traverse_adjusted_for_memory(rover, target_x, target_y):
     turn_cmd = delta_heading * turn_gain
     fwd_cmd = max(min(delta_dist * forward_gain - angular_linear_weight * abs(delta_heading), max_fwd_vel), min_fwd_vel)
     right_cmd, left_cmd = fwd_cmd + turn_cmd, fwd_cmd - turn_cmd
-    time.sleep(0.8)
+    time.sleep(1.5)
     rover.send_command(left_cmd, right_cmd)
     return False  # Goal not yet reached
 
