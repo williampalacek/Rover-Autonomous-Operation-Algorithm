@@ -16,6 +16,8 @@ sqr_error = 0.5  # Square of the acceptable error margin to the goal
 critical_distance = 1  # Minimum distance to obstacle before taking avoidance action
 obstacle_memory = {'left': False, 'right': False}  # Memory of obstacles on the left and right sides
 
+rover = Rover()
+
 def signal_handler(sig, frame):
     """
     Handles the SIGINT signal (typically triggered by Ctrl+C) by stopping the rover.
