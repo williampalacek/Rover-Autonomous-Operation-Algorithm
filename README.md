@@ -26,4 +26,4 @@ The project is available under the MIT License. For full license details, refer 
 
 ## Authors
 
-- **Will Palacek** - Initial work and project lead. Responsible for the core development of the Rover Autonomous Operation Algorithm.
+**Will Palacek**—All coding and project lead. Responsible for developing the Rover Autonomous Operation Algorithm.
