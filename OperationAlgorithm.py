@@ -16,6 +16,7 @@ sqr_error = 0.5  # Square of the acceptable error margin to the goal
 critical_distance = 1  # Minimum distance to obstacle before taking avoidance action
 obstacle_memory = {'left': False, 'right': False}  # Memory of obstacles on the left and right sides
 heading_threshold = 0.14  # Acceptable threshold for heading alignment in radians
+non_critical_distance = 8
 
 rover = Rover()
 
@@ -30,29 +31,25 @@ def signal_handler(sig, frame):
 
 def direct_obstacle_avoidance(rover):
     """
-    Checks for obstacles directly in front of the rover and decides whether avoidance is needed.
-    Adjusts the rover's direction by applying a turn in response to detected obstacles.
+    Checks for obstacles and returns heading adjustments rather than executing turn commands.
     """
-    global obstacle_memory
-    # Define angles to check for obstacles in front, left, and right directions
     front_angles = range(-15, 16)
-    left_angles = range(-60, -15)
-    right_angles = range(16, 60)
-    
-    # Update obstacle memory based on current sensor data
-    update_obstacle_memory(rover, left_angles, right_angles)
+    front_left_angles = range(-15, 0)
+    front_right_angles = range(1, 16)
 
-    # Calculate the minimum distance to any obstacle in front
-    front_distances = [rover.laser_distances[angle] for angle in front_angles if 0 <= angle < len(rover.laser_distances)]
-    if not front_distances:
-        return False, 0, 0  # No data available, proceed as normal
+    front_left_distances = [rover.laser_distances[angle] for angle in front_left_angles if 0 <= angle < len(rover.laser_distances)]
+    front_right_distances = [rover.laser_distances[angle] for angle in front_right_angles if 0 <= angle < len(rover.laser_distances)]
 
-    min_distance = min(front_distances)
-    if min_distance < critical_distance:
-        avoidance_turn = max_fwd_vel  # Emergency turn command
-        return True, -avoidance_turn, avoidance_turn
+    min_left_distance = min(front_left_distances) if front_left_distances else float('inf')
+    min_right_distance = min(front_right_distances) if front_right_distances else float('inf')
 
-    return False, 0, 0  # No immediate frontal obstacle, proceed as normal
+    heading_adjustment = 0
+    if min_left_distance < non_critical_distance and min_left_distance != float('inf'):
+        heading_adjustment = turn_gain  # Adjust heading slightly to the right
+    elif min_right_distance < non_critical_distance and min_right_distance != float('inf'):
+        heading_adjustment = -turn_gain  # Adjust heading slightly to the left
+
+    return heading_adjustment
 
 def update_obstacle_memory(rover, left_angles, right_angles):
     """
@@ -69,40 +66,29 @@ def update_obstacle_memory(rover, left_angles, right_angles):
 
 def traverse_adjusted_for_memory(rover, target_x, target_y):
     """
-    Navigates the rover towards a target location, adjusting for obstacles remembered from previous checks.
+    Adjusts navigation to incorporate heading adjustments directly into final commands.
     """
-    global obstacle_memory
-    # Check if immediate avoidance is needed
-    avoidance_needed, left_avoid_cmd, right_avoid_cmd = direct_obstacle_avoidance(rover)
-    if avoidance_needed:
-        rover.send_command(left_avoid_cmd, right_avoid_cmd)
-        return False
+    # Calculate heading adjustment for non-critical obstacles
+    heading_adjustment = direct_obstacle_avoidance(rover)
 
-    # Calculate the heading and distance to the target
     curr_x, curr_y = rover.x, rover.y
     curr_heading = math.radians(rover.heading)
     delta_x, delta_y = target_x - curr_x, target_y - curr_y
     target_heading = math.atan2(delta_y, delta_x)
-    delta_heading = (target_heading - curr_heading + math.pi) % (2 * math.pi) - math.pi
+    delta_heading = (target_heading - curr_heading + math.pi) % (2 * math.pi) - math.pi + heading_adjustment
     delta_dist = math.sqrt(delta_x ** 2 + delta_y ** 2)
 
     if delta_dist < sqr_error:
         rover.send_command(0, 0)
-        return True  # Goal reached
+        return True
 
-    # Adjust turn and forward commands based on obstacle memory
-    if obstacle_memory['left']:
-        delta_heading -= math.pi / 4  # Steer away from the left side
-    if obstacle_memory['right']:
-        delta_heading += math.pi / 4  # Steer away from the right side
-
-    # Calculate and send navigation commands to the rover
     turn_cmd = delta_heading * turn_gain
     fwd_cmd = max(min(delta_dist * forward_gain - angular_linear_weight * abs(delta_heading), max_fwd_vel), min_fwd_vel)
     right_cmd, left_cmd = fwd_cmd + turn_cmd, fwd_cmd - turn_cmd
     time.sleep(0.2)
     rover.send_command(left_cmd, right_cmd)
-    return False  # Goal not yet reached
+
+    return False
 
 def fields(rover):
     """
