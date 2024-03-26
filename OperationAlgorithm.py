@@ -7,14 +7,15 @@ from qset_lib import Rover
 turn_gain = 0.5  # Gain for turning speed adjustment
 forward_gain = 0.1  # Gain for forward speed adjustment
 angular_linear_weight = 8  # Weight for balancing angular and linear movements
-min_fwd_vel = 1.3  # Minimum forward velocity
-max_fwd_vel = 2.0  # Maximum forward velocity
-x_goal = -10  # X-coordinate of the goal
-y_goal = -10  # Y-coordinate of the goal
+min_fwd_vel = 1.55  # Minimum forward velocity
+max_fwd_vel = 1.85  # Maximum forward velocity
+x_goal = 23  # X-coordinate of the goal
+y_goal = 23  # Y-coordinate of the goal
 k = 185  # Constant for potential field calculation
 sqr_error = 0.5  # Square of the acceptable error margin to the goal
 critical_distance = 1  # Minimum distance to obstacle before taking avoidance action
 obstacle_memory = {'left': False, 'right': False}  # Memory of obstacles on the left and right sides
+heading_threshold = 0.14  # Acceptable threshold for heading alignment in radians
 
 rover = Rover()
 
@@ -99,7 +100,7 @@ def traverse_adjusted_for_memory(rover, target_x, target_y):
     turn_cmd = delta_heading * turn_gain
     fwd_cmd = max(min(delta_dist * forward_gain - angular_linear_weight * abs(delta_heading), max_fwd_vel), min_fwd_vel)
     right_cmd, left_cmd = fwd_cmd + turn_cmd, fwd_cmd - turn_cmd
-    time.sleep(1.5)
+    time.sleep(0.2)
     rover.send_command(left_cmd, right_cmd)
     return False  # Goal not yet reached
 
@@ -120,10 +121,35 @@ def fields(rover):
 
     return field_total_x, field_total_y
 
+def initial_orientation_turn(rover, target_x, target_y):
+    """
+    Adjusts the rover's heading towards the target coordinates without forward movement.
+    """
+    curr_x, curr_y = rover.x, rover.y
+    curr_heading = math.radians(rover.heading)
+    target_heading = math.atan2(target_y - curr_y, target_x - curr_x)
+    delta_heading = (target_heading - curr_heading + math.pi) % (2 * math.pi) - math.pi
+    
+    while abs(delta_heading) > heading_threshold:
+        turn_cmd = delta_heading * turn_gain
+        rover.send_command(-turn_cmd, turn_cmd)  # Only turning, no forward movement
+        time.sleep(0.1)  # Short delay for continuous adjustment
+        print("Waiting")
+        
+        # Update current heading and recalculate delta_heading
+        curr_heading = math.radians(rover.heading)
+        delta_heading = (target_heading - curr_heading + math.pi) % (2 * math.pi) - math.pi
+    
+    rover.send_command(0,0)
+    print("Rover Done Initial Turn")
+    time.sleep(0.2)
+
+
 def main():
     rover = Rover()  # Initialize the rover
     time.sleep(1)  # Wait for the rover to be fully ready
     signal.signal(signal.SIGINT, signal_handler)
+    initial_orientation_turn(rover, x_goal, y_goal)
 
     try:
         while True:
